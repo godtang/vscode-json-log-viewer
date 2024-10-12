@@ -19,10 +19,11 @@ export function activate(context: vscode.ExtensionContext) {
 						vscode.ViewColumn.One,
 						{}
 					);
+					let result = json.getHTML();
 
-					panel.webview.html = json.getHTML();
+					panel.webview.html = result;
 					// console.log(json.getHTML());
-				} catch (e) {
+				} catch (e: any) {
 					vscode.window.showErrorMessage(e.toString());
 				}
 			}

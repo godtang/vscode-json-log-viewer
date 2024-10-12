@@ -1,4 +1,4 @@
-import * as JSON5 from "json5"
+import * as JSON5 from "json5";
 import * as vscode from 'vscode';
 
 class HeaderItem {
@@ -44,8 +44,8 @@ class HeaderItem {
         if (ret) {
             return ret;
         }
-        
-        ret = new HeaderItem(this._level+ 1);
+
+        ret = new HeaderItem(this._level + 1);
         this.addChild(field, ret);
         return ret;
     }
@@ -61,17 +61,28 @@ class HeaderItem {
 
 export class JSONTable {
     private json: object;
+    private bodyList: object[];
     private header: HeaderItem;
     private maxHeaderDepth: number;
-    private divs: {column: number, row: number, rowSpan: number, data: string}[];
+    private divs: { column: number, row: number, rowSpan: number, data: string; }[];
 
     constructor(text: string) {
-        this.json = JSON5.parse(text);
+        const lines = text.trim().split("\n");
+        this.bodyList = [];
+        for (let i = 0; i < lines.length; i++) {
+            let tempStr = lines[i];
+            tempStr = tempStr.trim();
+            let tempJson = JSON5.parse(tempStr);
+            this.bodyList.push(tempJson);
+        }
+        this.json = JSON5.parse(lines[0]);
         this.header = new HeaderItem(0);
         this.divs = [];
         this.maxHeaderDepth = this.buildHeader("", this.json, this.header);
         this.header.callSize();
-        this.getBodySpan(this.header, this.json, this.maxHeaderDepth + 1, 1);
+        for (let i = 0; i < this.bodyList.length; i++) {
+            this.getBodySpan(this.header, this.bodyList[i], this.maxHeaderDepth + 1 + i, 1);
+        }
     }
 
     buildHeader(prefix: string, partialJson: object, partialHeader: HeaderItem): number {
@@ -79,7 +90,7 @@ export class JSONTable {
         if (partialJson instanceof Array) {
             let header: HeaderItem = partialHeader.getOrAddChild(prefix + ".*");
 
-            if (partialJson.length == 0) {
+            if (partialJson.length === 0) {
                 header.addAttr(".value");
             }
 
@@ -100,7 +111,7 @@ export class JSONTable {
         if (!json) {
             return undefined;
         }
-        if (path == ".*") {
+        if (path === ".*") {
             if (json instanceof Array) {
                 return json;
             }
@@ -122,7 +133,7 @@ export class JSONTable {
         }
 
         let step = steps[steps.length - 1];
-        if (step == '*' || step == 'value') {
+        if (step === '*' || step === 'value') {
             return ret;
         }
 
@@ -141,7 +152,7 @@ export class JSONTable {
     getBodySpan(partialHeader: HeaderItem, partialJson: object, rowBase: number, columnBase: number): number {
         let ret = 1;
         let currentColumnBase = columnBase + partialHeader.attrs.size;
-        for (let [k,item] of partialHeader.children.entries()) {
+        for (let [k, item] of partialHeader.children.entries()) {
             let childJson = this.getByPath(k, partialJson);
             if (childJson && childJson instanceof Array) {
                 let update = 0;
@@ -161,16 +172,18 @@ export class JSONTable {
                     row: rowBase,
                     column: columnBase + i,
                     rowSpan: ret,
-                    data: JSON.stringify(value)});
+                    data: JSON.stringify(value)
+                });
             } else {
                 this.divs.push({
                     row: rowBase,
                     column: columnBase + i,
                     rowSpan: ret,
-                    data: ""});
+                    data: ""
+                });
             }
 
-            ++ i;
+            ++i;
         }
 
         return ret;
@@ -179,7 +192,7 @@ export class JSONTable {
     tableHeaderHTML(): string {
         let divs: string[] = [];
         let totalRowSpan = this.maxHeaderDepth;
-        let q: {index: number, item: HeaderItem}[] = [{index: 1, item: this.header}];
+        let q: { index: number, item: HeaderItem; }[] = [{ index: 1, item: this.header }];
 
         while (q.length > 0) {
             let item = q.shift();
@@ -194,29 +207,33 @@ export class JSONTable {
             }
 
             let rowSpan = totalRowSpan - header.level;
-            
+
             for (let attr of header.attrs) {
                 divs.push(`<div class="table-header table-item" style="grid-column: ${index} / span 1; grid-row: span ${rowSpan};">${attr}</div>`);
-                ++ index;
+                ++index;
             }
 
             for (let [k, v] of header.children) {
                 divs.push(`<div class="table-header table-item" style="grid-column: ${index} / span ${v.size}; grid-row: span 1;">${k}</div>`);
-                q.push({index: index, item: v});
+                q.push({ index: index, item: v });
                 index += v.size;
             }
         }
+        let result = divs.join("");
 
-        return divs.join("");
+        return result;
     }
 
     tableBodyHTML(): string {
         let divStrings: string[] = [];
         for (let div of this.divs) {
-            divStrings.push(`<div class="table-item" style="grid-column-start: ${div.column}; grid-row: ${div.row} / span ${div.rowSpan};">${div.data}</div>`)
+            let src_data = div.data;
+            src_data = src_data.replace(/\\n/g, '\n');
+            divStrings.push(`<div class="table-item" style="grid-column-start: ${div.column}; grid-row: ${div.row} / span ${div.rowSpan};">${src_data}</div>`);
         }
+        let result = divStrings.join("");
 
-        return divStrings.join("");
+        return result;
     }
 
     getHTML(): string {
@@ -263,11 +280,11 @@ export class JSONTable {
     getTableItemStyle(type: string): string {
         const conf = vscode.workspace.getConfiguration("json-table-viewer");
         if (conf) {
-            const style = conf.get<string>(type)
+            const style = conf.get<string>(type);
             if (style) {
                 return style;
             }
         }
-        return 'text-align: center;';
+        return 'text-align: left;';
     }
 }
