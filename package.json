@@ -1,9 +1,9 @@
 {
-	"name": "json-table-viewer",
-	"displayName": "JSON Table Viewer",
+	"name": "json-log-viewer",
+	"displayName": "JSON Log Viewer",
 	"description": "View JSON as Nested Table",
 	"publisher": "lengmo",
-	"version": "0.0.4",
+	"version": "0.0.1",
 	"engines": {
 		"vscode": "^1.53.0"
 	},
@@ -11,18 +11,18 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:json-table-viewer.OpenView"
+		"onCommand:json-log-viewer.OpenView"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "json-table-viewer.OpenView",
-				"title": "JSON Table Viewer: Open View"
+				"command": "json-log-viewer.OpenView",
+				"title": "JSON Log Viewer: Open View"
 			}
 		],
 		"configuration": {
-			"title": "JsonViewTable",
+			"title": "JsonViewLog",
 			"properties": {
 				"json-table-viewer.item-light-style": {
 					"type": "string",
@@ -69,13 +69,13 @@
 	},
 	"icon": "icon.png",
 	"bugs": {
-		"url": "https://github.com/lengmoXXL/vscode-json-table-viewer/issues",
+		"url": "https://github.com/godtang/vscode-json-log-viewer/issues",
 		"email": "forlearn_lzy@163.com"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/lengmoXXL/vscode-json-table-viewer"
+		"url": "https://github.com/godtang/vscode-json-log-viewer"
 	},
-	"homepage": "https://github.com/lengmoXXL/vscode-json-table-viewer/raw/main/README.md",
+	"homepage": "https://github.com/godtang/vscode-json-log-viewer/blob/main/README.md",
 	"license": "Apache-2.0"
 }
