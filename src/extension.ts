@@ -7,7 +7,7 @@ import { JSONTable } from './jsonTable';
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
-		vscode.commands.registerCommand('json-table-viewer.OpenView', () => {
+		vscode.commands.registerCommand('json-log-viewer.OpenView', () => {
 			let activeTextEditor = vscode.window.activeTextEditor;
 			if (activeTextEditor) {
 				try {
@@ -15,7 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 					const panel = vscode.window.createWebviewPanel(
 						'json-table-viewer',
-						'JSON Table Viewer',
+						'JSON Log Viewer',
 						vscode.ViewColumn.One,
 						{}
 					);
