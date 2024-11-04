@@ -1,3 +1,5 @@
+// 认为单个日志文件中的json对象都一致，只需要解析第一行即可获得整体格式
+
 import * as JSON5 from "json5";
 import * as vscode from 'vscode';
 
@@ -59,29 +61,38 @@ class HeaderItem {
     }
 }
 
+
+
 export class JSONTable {
-    private json: object;
-    private bodyList: object[];
-    private header: HeaderItem;
-    private maxHeaderDepth: number;
-    private divs: { column: number, row: number, rowSpan: number, data: string; }[];
+    private titleJson: object = {};
+    private contentList: object[] = [];
+    private header: HeaderItem = new HeaderItem();
+    private maxHeaderDepth: number = 0;
+    private divs: { column: number, row: number, rowSpan: number, data: string; }[] = [];
 
     constructor(text: string) {
-        const lines = text.trim().split("\n");
-        this.bodyList = [];
-        for (let i = 0; i < lines.length; i++) {
-            let tempStr = lines[i];
-            tempStr = tempStr.trim();
-            let tempJson = JSON5.parse(tempStr);
-            this.bodyList.push(tempJson);
-        }
-        this.json = JSON5.parse(lines[0]);
-        this.header = new HeaderItem(0);
-        this.divs = [];
-        this.maxHeaderDepth = this.buildHeader("", this.json, this.header);
-        this.header.callSize();
-        for (let i = 0; i < this.bodyList.length; i++) {
-            this.getBodySpan(this.header, this.bodyList[i], this.maxHeaderDepth + 1 + i, 1);
+        try {
+            const lines = text.trim().split("\n");
+            this.contentList = [];
+            for (let i = 0; i < lines.length; i++) {
+                let tempStr = lines[i].trim();
+                if ("" === tempStr) {
+                    continue;
+                }
+                let tempJson = JSON5.parse(tempStr);
+                this.contentList.push(tempJson);
+            }
+            this.titleJson = JSON5.parse(lines[0]);
+            this.header = new HeaderItem(0);
+            this.divs = [];
+            this.maxHeaderDepth = this.buildHeader("", this.titleJson, this.header);
+            this.header.callSize();
+            for (let i = 0; i < this.contentList.length; i++) {
+                this.getBodySpan(this.header, this.contentList[i], this.maxHeaderDepth + 1 + i, 1);
+            }
+        } catch (e) {
+            console.log(e);
+            throw e;
         }
     }
 
@@ -242,36 +253,38 @@ export class JSONTable {
             <header>
                 <title>JSON Table Viewer</title>
                 <style> 
-                    .json-table {
-                        display: grid;
-                        grid-template-columns: repeat(` + this.header.size + `, 1fr);
-                        row-gap: 1px;
-                        column-gap: 1px;
+                    table {
+                        width: 100%;
+                        border-collapse: collapse; /* 去除双线边框 */
+                        overflow-x: auto;
                     }
-        
-                    body .table-header {
+
+                    td {
+                        border: 1px solid white; /* 单元格边框颜色为白色 */
+                        padding: 8px;
+                        text-align: center;
+                        color: #fff;
+                        word-wrap: break-word; /* 允许单词换行 */
+                        white-space: normal; /* 允许换行 */
+                    }
+
+                    /* 设置表头粗体 */
+                    th {
+                        border: 1px solid white; /* 单元格边框颜色为白色 */
+                        padding: 8px;
+                        text-align: center;
+                        color: #fff;
                         font-weight: bold;
+                        background-color: #4CAF50; /* 表头背景色（可选） */
+                        color: white;
                     }
-
-                    body.vscode-light .table-item {
-                        ` + this.getTableItemStyle("item-light-style") + `
-                    }
-
-                    body.vscode-dark .table-item {
-                        ` + this.getTableItemStyle("item-dark-style") + `
-                    }
-
-                    body.vscode-high-contrast .table-item {
-                        ` + this.getTableItemStyle("item-high-contrast-style") + `
-                    }
-        
                 </style>
             </header>
             <body>
-                <div class="json-table">
-                    ` + this.tableHeaderHTML() + `
-                    ` + this.tableBodyHTML() + `
-                </div>
+                <table>
+                    ${this.getTitle()}
+                    ${this.getContent()}
+                </table>
             </body>
         
         </html>`;
@@ -287,4 +300,31 @@ export class JSONTable {
         }
         return 'text-align: left;';
     }
+
+    getTitle(): string {
+        let result = "<tr>";
+        for (let key in this.titleJson) {
+            let temp = `<th>${key}</th>`;
+            result += temp;
+        }
+        result += "</tr>";
+        return result;
+    }
+    getContent(): string {
+        let result = "";
+        for (let i = 0; i < this.contentList.length; i++) {
+            const content:any = this.contentList[i];
+            result += "<tr>";
+            for (let key in content) {
+                if (typeof content[key] === 'object' && content[key] !== null) {
+                    result += `<td>${JSON.stringify(content[key], null, 4)}</td>`;
+                  }else{
+                    result += `<td>${content[key]}</td>`;
+                  }
+            }
+            result += "</tr>";
+        }
+        return result;
+    }
 }
+
