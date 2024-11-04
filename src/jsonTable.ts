@@ -42,44 +42,54 @@ export class JSONTable {
                     ${this.getTitle()}
                     ${this.getContent()}
                 </table>
+                ${this.getScript()}
             </body>
-        
         </html>`;
     }
 
     getStyle(): string {
-        return `table {
-                        width: 100%;
-                        border-collapse: collapse; /* 去除双线边框 */
-                        overflow-x: auto;
-                    }
-
-                    td {
-                        border: 1px solid white; /* 单元格边框颜色为白色 */
-                        padding: 8px;
-                        text-align: left;
-                        color: #eee;
-                        word-wrap: break-word; /* 允许单词换行 */
-                        white-space: pre-wrap;
-                        font-family: Consolas, monospace;
-                    }
-
-                    /* 设置表头粗体 */
-                    th {
-                        border: 1px solid white; /* 单元格边框颜色为白色 */
-                        padding: 8px;
-                        text-align: center;
-                        color: #fff;
-                        font-weight: bold;
-                        background-color: #4CAF50; /* 表头背景色（可选） */
-                        color: white;
-                    }`;
+        return `
+        table {
+            width: 100%;
+            border-collapse: collapse; /* 去除双线边框 */
+            overflow-x: auto;
+        }
+        th {
+            border: 1px solid white; /* 单元格边框颜色为白色 */
+            padding: 8px;
+            text-align: center;
+            color: #fff;
+            font-weight: bold;
+            background-color: #4CAF50; /* 表头背景色（可选） */
+            color: white;
+            position: relative;
+        }
+        th .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            user-select: none;
+        }
+        td {
+            border: 1px solid white; /* 单元格边框颜色为白色 */
+            padding: 8px;
+            text-align: left;
+            color: #eee;
+            word-wrap: break-word; /* 允许单词换行 */
+            white-space: pre-wrap;
+            font-family: Consolas, monospace;
+            position: relative;
+        }
+        `;
     }
 
     getTitle(): string {
         let result = "<tr>";
         for (let key in this.titleJson) {
-            let temp = `<th>${key}</th>`;
+            let temp = `<th>${key}<div class="resizer"></div></th>`;
             result += temp;
         }
         result += "</tr>";
@@ -112,6 +122,34 @@ export class JSONTable {
             }
         }
         return 'text-align: left;';
+    }
+
+    getScript(): string {
+        return `
+        <script>
+            const resizers = document.querySelectorAll(".resizer");
+            let startX, startWidth;
+
+            resizers.forEach(resizer => {
+                resizer.addEventListener("mousedown", (e) => {
+                startX = e.pageX;
+                startWidth = resizer.parentElement.offsetWidth;
+                document.addEventListener("mousemove", onMouseMove);
+                document.addEventListener("mouseup", onMouseUp);
+                });
+
+                function onMouseMove(e) {
+                const newWidth = startWidth + (e.pageX - startX);
+                resizer.parentElement.style.width = newWidth + "px";
+                }
+
+                function onMouseUp() {
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+                }
+            });
+        </script>
+        `;
     }
 }
 

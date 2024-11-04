@@ -17,7 +17,9 @@ export function activate(context: vscode.ExtensionContext) {
 						'json-table-viewer',
 						'JSON Log Viewer',
 						vscode.ViewColumn.One,
-						{}
+						{
+							enableScripts: true, // 允许脚本执行
+						}
 					);
 					let result = json.getHTML();
 
@@ -32,4 +34,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
