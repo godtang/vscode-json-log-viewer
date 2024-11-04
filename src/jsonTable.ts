@@ -61,6 +61,7 @@ export class JSONTable {
                         color: #eee;
                         word-wrap: break-word; /* 允许单词换行 */
                         white-space: pre-wrap;
+                        font-family: Consolas, monospace;
                     }
 
                     /* 设置表头粗体 */
