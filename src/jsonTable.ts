@@ -262,10 +262,10 @@ export class JSONTable {
                     td {
                         border: 1px solid white; /* 单元格边框颜色为白色 */
                         padding: 8px;
-                        text-align: center;
-                        color: #fff;
+                        text-align: left;
+                        color: #eee;
                         word-wrap: break-word; /* 允许单词换行 */
-                        white-space: normal; /* 允许换行 */
+                        white-space: pre-wrap;
                     }
 
                     /* 设置表头粗体 */
