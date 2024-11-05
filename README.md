@@ -1,6 +1,6 @@
 # json-table-viewer README
 
-![tutorial](https://raw.githubusercontent.com/godtang/vscode-json-log-viewer/main/yuqueCli.gif)
+![tutorial](https://raw.githubusercontent.com/godtang/vscode-json-log-viewer/main/show.gif)
 
 ## Features
 

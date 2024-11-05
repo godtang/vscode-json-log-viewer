@@ -2,8 +2,8 @@
 	"name": "json-log-viewer",
 	"displayName": "JSON Log Viewer",
 	"description": "View JSON as Nested Table",
-	"publisher": "lengmo",
-	"version": "0.0.1",
+	"publisher": "vscodejsonlogviewer",
+	"version": "0.0.2",
 	"engines": {
 		"vscode": "^1.53.0"
 	},
