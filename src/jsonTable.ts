@@ -129,21 +129,25 @@ export class JSONTable {
         <script>
             const resizers = document.querySelectorAll(".resizer");
             let startX, startWidth;
+            let isDragging = false;
 
             resizers.forEach(resizer => {
                 resizer.addEventListener("mousedown", (e) => {
                 startX = e.pageX;
                 startWidth = resizer.parentElement.offsetWidth;
+                isDragging = true;
                 document.addEventListener("mousemove", onMouseMove);
                 document.addEventListener("mouseup", onMouseUp);
                 });
 
                 function onMouseMove(e) {
+                if (!isDragging) return;
                 const newWidth = startWidth + (e.pageX - startX);
                 resizer.parentElement.style.width = newWidth + "px";
                 }
 
                 function onMouseUp() {
+                isDragging = false;
                 document.removeEventListener("mousemove", onMouseMove);
                 document.removeEventListener("mouseup", onMouseUp);
                 }
