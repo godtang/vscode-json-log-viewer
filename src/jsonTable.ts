@@ -20,6 +20,8 @@ export class JSONTable {
                 }
                 let tempJson = JSON5.parse(tempStr);
                 this.contentList.push(tempJson);
+                // if(i%100===0)
+                //     {console.log(`解析文档进度：${i}/${lines.length}`);}
             }
             this.titleJson = JSON5.parse(lines[0]);
         } catch (e) {
@@ -38,10 +40,17 @@ export class JSONTable {
                 </style>
             </header>
             <body>
-                <table>
+                <table id="table">
+                    <thead id="tableHead">
                     ${this.getTitle()}
+                    </thead>
+                    <tbody>
                     ${this.getContent()}
+                    </tbody>
                 </table>
+                <div id="contextMenu" class="context-menu">
+                    <div class="context-menu-item" id="hideColumn">Hide this column</div>
+                </div>
                 ${this.getScript()}
             </body>
         </html>`;
@@ -83,6 +92,21 @@ export class JSONTable {
             font-family: Consolas, monospace;
             position: relative;
         }
+        .context-menu {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu-item:hover {
+            background: #f0f0f0;
+        }
         `;
     }
 
@@ -108,6 +132,8 @@ export class JSONTable {
                 }
             }
             result += "</tr>";
+            // if(i%100===0)
+            //     {console.log(`显示文档进度：${i}/${this.contentList.length}`);}
         }
         return result;
     }
@@ -151,6 +177,40 @@ export class JSONTable {
                 document.removeEventListener("mousemove", onMouseMove);
                 document.removeEventListener("mouseup", onMouseUp);
                 }
+            });
+            const table = document.getElementById('table');
+            const tableHead = document.getElementById('tableHead');
+            const contextMenu = document.getElementById('contextMenu');
+            let currentColumnIndex = null;
+
+            // Show context menu on right click
+            tableHead.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            const th = event.target.closest('th');
+            if (th) {
+                currentColumnIndex = [...th.parentElement.children].indexOf(th);
+                contextMenu.style.left = \`\${event.pageX}px\`;
+                contextMenu.style.top = \`\${event.pageY}px\`;
+                contextMenu.style.display = 'block';
+            }
+            });
+
+            // Hide context menu on click outside
+            document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+            });
+
+            // Hide column when menu item clicked
+            document.getElementById('hideColumn').addEventListener('click', () => {
+            if (currentColumnIndex !== null) {
+                // Hide the header cell
+                table.querySelectorAll('thead th')[currentColumnIndex].style.display = 'none';
+                // Hide the corresponding body cells
+                table.querySelectorAll('tbody tr').forEach(row => {
+                row.children[currentColumnIndex].style.display = 'none';
+                });
+            }
+            contextMenu.style.display = 'none';
             });
         </script>
         `;

@@ -29,6 +29,9 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showErrorMessage(e.toString());
 				}
 			}
+			else{
+				vscode.window.showErrorMessage("No active text editor found, maybe file is too large.");
+			}
 		})
 	);
 }

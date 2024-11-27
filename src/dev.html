@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>畅思维交易管理系统</title>
+    <style>
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow-x: auto;
+      }
+
+      th {
+        border: 1px solid rgb(15, 1, 1);
+        padding: 8px;
+        text-align: center;
+        color: #fff;
+        font-weight: bold;
+        background-color: #4CAF50;
+        position: relative;
+      }
+
+      th .resizer {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 5px;
+        height: 100%;
+        cursor: col-resize;
+        user-select: none;
+      }
+
+      td {
+        border: 1px solid rgb(24, 5, 5);
+        /* 单元格边框颜色为白色 */
+        padding: 8px;
+        text-align: left;
+        color: #1d0a0a;
+        word-wrap: break-word;
+        /* 允许单词换行 */
+        white-space: pre-wrap;
+        font-family: Consolas, monospace;
+        position: relative;
+      }
+
+      .context-menu {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+      }
+
+      .context-menu-item {
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .context-menu-item:hover {
+        background: #f0f0f0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <table id="wholeTable">
+      <thead id="tableHead">
+        <tr>
+          <th>1<div class="resizer"></div>
+          </th>
+          <th>2<div class="resizer"></div>
+          </th>
+          <th>3<div class="resizer"></div>
+          </th>
+          <th>4<div class="resizer"></div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>5</td>
+          <td>6</td>
+          <td>7</td>
+          <td>8</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td>10</td>
+          <td>11</td>
+          <td>12</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="contextMenu" class="context-menu">
+      <div class="context-menu-item" id="hideColumn">Hide this column</div>
+    </div>
+    <script>
+      const resizers = document.querySelectorAll(".resizer");
+      let startX, startWidth;
+      let isDragging = false;
+
+      resizers.forEach(resizer => {
+        resizer.addEventListener("mousedown", (e) => {
+          startX = e.pageX;
+          startWidth = resizer.parentElement.offsetWidth;
+          isDragging = true;
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+
+        function onMouseMove(e) {
+          if (!isDragging) return;
+          const newWidth = startWidth + (e.pageX - startX);
+          resizer.parentElement.style.width = newWidth + "px";
+        }
+
+        function onMouseUp() {
+          isDragging = false;
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
+      });
+      const table = document.getElementById('wholeTable');
+      const tableHeader = document.getElementById('tableHead');
+      const contextMenu = document.getElementById('contextMenu');
+      let currentColumnIndex = null;
+
+      // Show context menu on right click
+      tableHeader.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        const th = event.target.closest('th');
+        if (th) {
+          currentColumnIndex = [...th.parentElement.children].indexOf(th);
+          contextMenu.style.left = `${event.pageX}px`;
+          contextMenu.style.top = `${event.pageY}px`;
+          contextMenu.style.display = 'block';
+        }
+      });
+
+      document.addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+      });
+
+      document.getElementById('hideColumn').addEventListener('click', () => {
+        if (currentColumnIndex !== null) {
+          table.querySelectorAll('thead th')[currentColumnIndex].style.display = 'none';
+          table.querySelectorAll('tbody tr').forEach(row => {
+            row.children[currentColumnIndex].style.display = 'none';
+          });
+        }
+        contextMenu.style.display = 'none';
+      });
+    </script>
+  </body>
+
+</html>
