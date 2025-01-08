@@ -8,11 +8,22 @@ import * as vscode from 'vscode';
 export class JSONTable {
     private titleJson: object = {};
     private contentList: object[] = [];
+    private keys: string[] = []; // 新增：用于存储固定的键顺序
 
     constructor(text: string) {
         try {
             const lines = text.trim().split("\n");
             this.contentList = [];
+            
+            // 先解析第一行来确定键的顺序
+            if (lines.length > 0) {
+                let firstJson = JSON5.parse(lines[0].trim());
+                this.titleJson = firstJson;
+                // 保存键的顺序
+                this.keys = Object.keys(firstJson);
+            }
+
+            // 然后解析所有行
             for (let i = 0; i < lines.length; i++) {
                 let tempStr = lines[i].trim();
                 if ("" === tempStr) {
@@ -21,7 +32,6 @@ export class JSONTable {
                 let tempJson = JSON5.parse(tempStr);
                 this.contentList.push(tempJson);
             }
-            this.titleJson = JSON5.parse(lines[0]);
         } catch (e) {
             console.log(e);
             throw e;
@@ -88,7 +98,8 @@ export class JSONTable {
 
     getTitle(): string {
         let result = "<tr>";
-        for (let key in this.titleJson) {
+        // 使用保存的键顺序来生成表头
+        for (let key of this.keys) {
             let temp = `<th>${key}<div class="resizer"></div></th>`;
             result += temp;
         }
@@ -100,7 +111,8 @@ export class JSONTable {
         for (let i = 0; i < this.contentList.length; i++) {
             const content: any = this.contentList[i];
             result += "<tr>";
-            for (let key in content) {
+            // 使用保存的键顺序来生成每一行的数据
+            for (let key of this.keys) {
                 if (typeof content[key] === 'object' && content[key] !== null) {
                     result += `<td>${JSON.stringify(content[key], null, 4)}</td>`;
                 } else {
