@@ -10,6 +10,10 @@ export class JSONTable {
     private contentList: object[] = [];
 
     constructor(text: string) {
+        this.refresh(text);
+    }
+
+    refresh(text: string): void {
         try {
             const lines = text.trim().split("\n");
             this.contentList = [];
@@ -20,8 +24,6 @@ export class JSONTable {
                 }
                 let tempJson = JSON5.parse(tempStr);
                 this.contentList.push(tempJson);
-                // if(i%100===0)
-                //     {console.log(`解析文档进度：${i}/${lines.length}`);}
             }
             this.titleJson = JSON5.parse(lines[0]);
         } catch (e) {
@@ -132,8 +134,6 @@ export class JSONTable {
                 }
             }
             result += "</tr>";
-            // if(i%100===0)
-            //     {console.log(`显示文档进度：${i}/${this.contentList.length}`);}
         }
         return result;
     }
