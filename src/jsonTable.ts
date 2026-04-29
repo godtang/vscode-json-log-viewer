@@ -8,6 +8,7 @@ import * as vscode from 'vscode';
 export class JSONTable {
     private titleJson: object = {};
     private contentList: object[] = [];
+    private fields: string[] = [];
 
     constructor(text: string) {
         this.refresh(text);
@@ -15,6 +16,9 @@ export class JSONTable {
 
     refresh(text: string): void {
         try {
+            const conf = vscode.workspace.getConfiguration("json-table-viewer");
+            this.fields = conf.get<string[]>("show-fields", []);
+
             const lines = text.trim().split("\n");
             this.contentList = [];
             for (let i = 0; i < lines.length; i++) {
@@ -113,20 +117,28 @@ export class JSONTable {
     }
 
     getTitle(): string {
+        const allFields = Object.keys(this.titleJson);
+        const fields = this.fields && this.fields.length > 0 ? this.fields : allFields;
         let result = "<tr>";
-        for (let key in this.titleJson) {
-            let temp = `<th>${key}<div class="resizer"></div></th>`;
-            result += temp;
+        for (const key of fields) {
+            if (allFields.includes(key)) {
+                result += `<th>${key}<div class="resizer"></div></th>`;
+            }
         }
         result += "</tr>";
         return result;
     }
     getContent(): string {
+        const allFields = Object.keys(this.titleJson);
+        const fields = this.fields && this.fields.length > 0 ? this.fields : allFields;
         let result = "";
         for (let i = 0; i < this.contentList.length; i++) {
             const content: any = this.contentList[i];
             result += "<tr>";
-            for (let key in content) {
+            for (const key of fields) {
+                if (!allFields.includes(key)) {
+                    continue;
+                }
                 if (typeof content[key] === 'object' && content[key] !== null) {
                     result += `<td>${JSON.stringify(content[key], null, 4)}</td>`;
                 } else {
@@ -136,18 +148,6 @@ export class JSONTable {
             result += "</tr>";
         }
         return result;
-    }
-
-    // 后续可以考虑支持自定义样式
-    getTableItemStyle(type: string): string {
-        const conf = vscode.workspace.getConfiguration("json-table-viewer");
-        if (conf) {
-            const style = conf.get<string>(type);
-            if (style) {
-                return style;
-            }
-        }
-        return 'text-align: left;';
     }
 
     getScript(): string {

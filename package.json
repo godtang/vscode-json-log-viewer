@@ -3,7 +3,7 @@
 	"displayName": "JSON Log Viewer",
 	"description": "View JSON as Table",
 	"publisher": "tanggod",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"engines": {
 		"vscode": "^1.53.0"
 	},
@@ -22,20 +22,10 @@
 		"configuration": {
 			"title": "JsonViewLog",
 			"properties": {
-				"json-table-viewer.item-light-style": {
-					"type": "string",
-					"default": "text-align: left; border-style: solid; border-width: .1px;",
-					"description": "css description of table item"
-				},
-				"json-table-viewer.item-dark-style": {
-					"type": "string",
-					"default": "text-align: left; border-style: solid; border-width: .1px;",
-					"description": "css description of table item"
-				},
-				"json-table-viewer.item-high-contrast-style": {
-					"type": "string",
-					"default": "text-align: left; border-style: solid; border-width: .1px;",
-					"description": "css description of table item"
+				"json-table-viewer.show-fields": {
+					"type": "array",
+					"default": [],
+					"description": "要显示的字段，空数组表示显示全部字段"
 				}
 			}
 		}
