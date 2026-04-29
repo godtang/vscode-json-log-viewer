@@ -73,12 +73,26 @@ export class JSONTable {
                 </style>
             </header>
             <body>
+                <div id="searchBar" style="position:fixed; top:0; left:0; right:0; background:#2d2d2d; padding:8px; z-index:9999; border-bottom:1px solid #555;">
+                    <input id="searchInput" type="text" placeholder="Search (Enter=下一个, Shift+Enter=上一个)" style="flex:1; padding:4px 8px; background:#1e1e1e; color:#eee; border:1px solid #555; border-radius:3px; font-size:14px; outline:none;" />
+                    <label style="color:#ccc; font-size:13px; cursor:pointer; white-space:nowrap;">
+                        <input id="caseSensitive" type="checkbox" style="vertical-align:middle; margin-right:3px;" /> 区分大小写
+                    </label>
+                    <label style="color:#ccc; font-size:13px; cursor:pointer; white-space:nowrap;">
+                        <input id="wholeWord" type="checkbox" style="vertical-align:middle; margin-right:3px;" /> 全词匹配
+                    </label>
+                    <span id="searchCount" style="color:#aaa; font-size:13px; min-width:60px; text-align:right;"></span>
+                    <button onclick="closeSearch()" style="background:transparent; color:#ccc; border:none; font-size:18px; cursor:pointer; padding:0 6px;">&times;</button>
+                </div>
+                <button id="searchToggle" onclick="showSearchBar()" style="position:fixed; top:8px; right:8px; z-index:10000; background:#007acc; color:#fff; border:none; border-radius:4px; padding:6px 12px; cursor:pointer; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">Ctrl+F 搜索</button>
+                <div id="contentWrapper" style="padding-top:0px;">
                 <table id="table">
                     <thead id="tableHead"></thead>
                     <tbody id="tableBody"></tbody>
                 </table>
                 <div id="contextMenu" class="context-menu">
                     <div class="context-menu-item" id="hideColumn">Hide this column</div>
+                </div>
                 </div>
                 <script>
                     var __DATA__ = ${JSON.stringify({ fields: this.fields, rows: this.contentList })};
@@ -151,6 +165,80 @@ export class JSONTable {
     getScript(): string {
         return `
         <script>
+            // ===== Search =====
+            function closeSearch() {
+                var sb = document.getElementById('searchBar');
+                sb.style.display = 'none';
+                document.getElementById('contentWrapper').style.paddingTop = '0px';
+                document.getElementById('searchToggle').style.display = 'block';
+            }
+
+            function showSearchBar() {
+                var sb = document.getElementById('searchBar');
+                sb.style.display = 'flex';
+                sb.style.alignItems = 'center';
+                sb.style.gap = '8px';
+                document.getElementById('contentWrapper').style.paddingTop = '42px';
+                document.getElementById('searchToggle').style.display = 'none';
+                document.getElementById('searchInput').focus();
+                document.getElementById('searchInput').select();
+            }
+
+            function doSearch(forward) {
+                var input = document.getElementById('searchInput');
+                var str = input.value;
+                if (!str) {
+                    document.getElementById('searchCount').textContent = '';
+                    return;
+                }
+                var caseSensitive = document.getElementById('caseSensitive').checked;
+                var wholeWord = document.getElementById('wholeWord').checked;
+
+                var opts = {
+                    forward: forward !== false,
+                    caseSensitive: caseSensitive,
+                    findNext: true
+                };
+                if (wholeWord) {
+                    opts.wordStart = true;
+                    opts.wordEnd = true;
+                }
+
+                var found = window.find(str, caseSensitive, !opts.forward, opts.wordStart || false, false, false, false);
+                if (found) {
+                    document.getElementById('searchCount').textContent = '已找到';
+                } else {
+                    document.getElementById('searchCount').textContent = '未找到';
+                }
+            }
+
+            function initSearch() {
+                var searchBar = document.getElementById('searchBar');
+                searchBar.style.display = 'none';
+                var searchInput = document.getElementById('searchInput');
+                var caseCheck = document.getElementById('caseSensitive');
+                var wordCheck = document.getElementById('wholeWord');
+
+                document.addEventListener('keydown', function(e) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showSearchBar();
+                    }
+                    if (e.key === 'Escape') {
+                        closeSearch();
+                    }
+                });
+
+                searchInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        doSearch(!e.shiftKey);
+                    }
+                });
+
+                caseCheck.addEventListener('change', function() { doSearch(true); });
+                wordCheck.addEventListener('change', function() { doSearch(true); });
+            }
             function formatEmbeddedJson(str) {
                 if (typeof str !== 'string') return str;
                 var jsonStart = str.indexOf('{');
@@ -291,6 +379,7 @@ export class JSONTable {
             }
 
             renderTable();
+            initSearch();
         </script>
         `;
     }
