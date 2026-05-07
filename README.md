@@ -88,3 +88,10 @@ Click the **Ctrl+F 搜索** button in the top-right corner of the table view to 
 
 - [Report an issue](https://github.com/godtang/vscode-json-log-viewer/issues)
 - [Source code](https://github.com/godtang/vscode-json-log-viewer)
+
+
+## 发布
+```
+npx vsce login tanggod
+npx vsce publish
+```
