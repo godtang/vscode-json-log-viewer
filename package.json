@@ -3,7 +3,7 @@
 	"displayName": "JSON Log Viewer",
 	"description": "View JSON as Table",
 	"publisher": "tanggod",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"engines": {
 		"vscode": "^1.53.0"
 	},
@@ -35,17 +35,22 @@
 				"json-table-viewer.log-level-filter": {
 					"type": "string",
 					"default": "debug",
-					"enum": ["debug", "info", "warn", "error"],
+					"enum": [
+						"debug",
+						"info",
+						"warn",
+						"error"
+					],
 					"description": "最低日志级别，低于此级别的日志将被隐藏"
 				},
 				"json-table-viewer.max-lines": {
 					"type": "number",
-					"default": 1000,
+					"default": 10000,
 					"description": "最多显示的行数，超出后从顶部丢弃"
 				},
 				"json-table-viewer.batch-size": {
 					"type": "number",
-					"default": 100,
+					"default": 1000,
 					"description": "批量渲染时每批的行数"
 				},
 				"json-table-viewer.format-embedded-json": {
@@ -84,7 +89,7 @@
 	"icon": "icon.png",
 	"bugs": {
 		"url": "https://github.com/godtang/vscode-json-log-viewer/issues",
-		"email": "forlearn_lzy@163.com"
+		"email": ""
 	},
 	"repository": {
 		"type": "git",
