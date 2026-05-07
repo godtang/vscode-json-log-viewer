@@ -1,5 +1,6 @@
 import * as JSON5 from "json5";
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 
 const logLevelEnum: Record<string, number> = {
     debug: 0, info: 1, warn: 2, error: 3,
@@ -7,9 +8,15 @@ const logLevelEnum: Record<string, number> = {
 };
 
 export class JSONTable {
-    private fields: string[] = [];
-    private contentList: any[] = [];
-    private batchSize: number = 100;
+    fields: string[] = [];
+    contentList: any[] = [];
+    batchSize: number = 100;
+    levelField = "";
+    levelFilter = 0;
+    maxLines = 1000;
+
+    // Tail: remember file byte offset
+    byteOffset = 0;
 
     constructor(text: string) {
         this.refresh(text);
@@ -19,40 +26,31 @@ export class JSONTable {
         try {
             const conf = vscode.workspace.getConfiguration("json-table-viewer");
             const showFields = conf.get<string[]>("show-fields", []);
-            const levelField = conf.get<string>("log-level-field", "");
-            const levelFilter = conf.get<string>("log-level-filter", "debug");
-            const maxLines = conf.get<number>("max-lines", 1000);
+            this.levelField = conf.get<string>("log-level-field", "");
+            this.levelFilter = logLevelEnum[conf.get<string>("log-level-filter", "debug")] ?? 0;
+            this.maxLines = conf.get<number>("max-lines", 1000);
             this.batchSize = conf.get<number>("batch-size", 100);
 
             const lines = text.trim().split("\n");
             this.contentList = [];
-
-            const minLevel = logLevelEnum[levelFilter] ?? 0;
+            const minLevel = this.levelFilter;
 
             for (let i = 0; i < lines.length; i++) {
                 let tempStr = lines[i].trim();
-                if ("" === tempStr) {
-                    continue;
-                }
+                if ("" === tempStr) { continue; }
                 let tempJson = JSON5.parse(tempStr);
 
-                // 日志级别过滤
-                if (levelField && tempJson[levelField] !== undefined) {
-                    const levelValue = logLevelEnum[tempJson[levelField]];
-                    if (levelValue === undefined || levelValue < minLevel) {
-                        continue;
-                    }
+                if (this.levelField && tempJson[this.levelField] !== undefined) {
+                    const levelValue = logLevelEnum[tempJson[this.levelField]];
+                    if (levelValue === undefined || levelValue < minLevel) { continue; }
                 }
-
                 this.contentList.push(tempJson);
             }
 
-            // 最大行数限制
-            if (this.contentList.length > maxLines) {
-                this.contentList = this.contentList.slice(-maxLines);
+            if (this.contentList.length > this.maxLines) {
+                this.contentList = this.contentList.slice(-this.maxLines);
             }
 
-            // 字段列表
             const allFields = lines.length > 0 ? Object.keys(JSON5.parse(lines[0])) : [];
             this.fields = showFields.length > 0
                 ? showFields.filter(f => allFields.includes(f))
@@ -60,6 +58,58 @@ export class JSONTable {
         } catch (e) {
             console.log(e);
             throw e;
+        }
+    }
+
+    /**
+     * Append new content to the table without re-parsing old lines.
+     * Reads new bytes from file starting at current byteOffset.
+     * Sends new rows to the webview via postMessage and scrolls to bottom.
+     * Returns true if new rows were added.
+     */
+    appendNewLines(panel: vscode.WebviewPanel, filePath: string): boolean {
+        const prevSize = this.byteOffset;
+        try {
+            const stat = fs.statSync(filePath);
+            if (stat.size <= prevSize) {
+                if (stat.size < prevSize) { this.byteOffset = stat.size; }
+                return false;
+            }
+
+            const fd = fs.openSync(filePath, 'r');
+            const buffer = Buffer.alloc(stat.size - prevSize);
+            fs.readSync(fd, buffer, 0, buffer.length, prevSize);
+            fs.closeSync(fd);
+
+            const newContent = buffer.toString('utf8');
+            const lines = newContent.split(/\r?\n/);
+            const rows: any[] = [];
+            const minLevel = this.levelFilter;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed === "") { continue; }
+                try {
+                    const json = JSON5.parse(trimmed);
+                    if (this.levelField && json[this.levelField] !== undefined) {
+                        const lv = logLevelEnum[json[this.levelField]];
+                        if (lv === undefined || lv < minLevel) { continue; }
+                    }
+                    rows.push(json);
+                } catch {
+                    // skip malformed lines
+                }
+            }
+
+            if (rows.length > 0) {
+                this.contentList.push(...rows);
+                panel.webview.postMessage({ command: 'appendRows', rows });
+            }
+
+            this.byteOffset = stat.size;
+            return rows.length > 0;
+        } catch {
+            return false;
         }
     }
 
@@ -165,7 +215,6 @@ export class JSONTable {
     getScript(): string {
         return `
         <script>
-            // ===== Search =====
             function closeSearch() {
                 var sb = document.getElementById('searchBar');
                 sb.style.display = 'none';
@@ -187,105 +236,57 @@ export class JSONTable {
             function doSearch(forward) {
                 var input = document.getElementById('searchInput');
                 var str = input.value;
-                if (!str) {
-                    document.getElementById('searchCount').textContent = '';
-                    return;
-                }
+                if (!str) { document.getElementById('searchCount').textContent = ''; return; }
                 var caseSensitive = document.getElementById('caseSensitive').checked;
                 var wholeWord = document.getElementById('wholeWord').checked;
-
-                var opts = {
-                    forward: forward !== false,
-                    caseSensitive: caseSensitive,
-                    findNext: true
-                };
-                if (wholeWord) {
-                    opts.wordStart = true;
-                    opts.wordEnd = true;
-                }
-
-                var found = window.find(str, caseSensitive, !opts.forward, opts.wordStart || false, false, false, false);
-                if (found) {
-                    document.getElementById('searchCount').textContent = '已找到';
-                } else {
-                    document.getElementById('searchCount').textContent = '未找到';
-                }
+                var found = window.find(str, caseSensitive, !forward, wholeWord, false, false, false);
+                document.getElementById('searchCount').textContent = found ? '已找到' : '未找到';
             }
 
             function initSearch() {
                 var searchBar = document.getElementById('searchBar');
                 searchBar.style.display = 'none';
                 var searchInput = document.getElementById('searchInput');
-                var caseCheck = document.getElementById('caseSensitive');
-                var wordCheck = document.getElementById('wholeWord');
 
                 document.addEventListener('keydown', function(e) {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        showSearchBar();
-                    }
-                    if (e.key === 'Escape') {
-                        closeSearch();
-                    }
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); e.stopPropagation(); showSearchBar(); }
+                    if (e.key === 'Escape') closeSearch();
                 });
-
                 searchInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        doSearch(!e.shiftKey);
-                    }
+                    if (e.key === 'Enter') doSearch(!e.shiftKey);
                 });
-
-                caseCheck.addEventListener('change', function() { doSearch(true); });
-                wordCheck.addEventListener('change', function() { doSearch(true); });
+                document.getElementById('caseSensitive').addEventListener('change', function() { doSearch(true); });
+                document.getElementById('wholeWord').addEventListener('change', function() { doSearch(true); });
             }
+
             function formatEmbeddedJson(str) {
                 if (typeof str !== 'string') return str;
-                var jsonStart = str.indexOf('{');
-                var jsonEnd = str.lastIndexOf('}');
+                var jsonStart = str.indexOf('{'), jsonEnd = str.lastIndexOf('}');
                 if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-                    var jsonStr = str.substring(jsonStart, jsonEnd + 1);
-                    try {
-                        var jsonObj = JSON.parse(jsonStr);
-                        return str.substring(0, jsonStart) + JSON.stringify(jsonObj, null, '\\t') + str.substring(jsonEnd + 1);
-                    } catch (e) {}
+                    try { var o = JSON.parse(str.substring(jsonStart, jsonEnd + 1)); return str.substring(0, jsonStart) + JSON.stringify(o, null, '\\t') + str.substring(jsonEnd + 1); } catch(e) {}
                 }
-                var arrayStart = str.indexOf('[');
-                var arrayEnd = str.lastIndexOf(']');
+                var arrayStart = str.indexOf('['), arrayEnd = str.lastIndexOf(']');
                 if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
-                    var arrayStr = str.substring(arrayStart, arrayEnd + 1);
-                    try {
-                        var jsonArray = JSON.parse(arrayStr);
-                        return str.substring(0, arrayStart) + JSON.stringify(jsonArray, null, '\\t') + str.substring(jsonEnd + 1);
-                    } catch (e) {}
+                    try { var a = JSON.parse(str.substring(arrayStart, arrayEnd + 1)); return str.substring(0, arrayStart) + JSON.stringify(a, null, '\\t') + str.substring(arrayEnd + 1); } catch(e) {}
                 }
                 return str;
             }
 
             function escapeHtml(str) {
-                return String(str)
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;');
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             }
 
             function formatCellValue(value) {
                 if (value === null || value === undefined) return '';
                 if (typeof value === 'object') return JSON.stringify(value, null, 4);
                 var str = String(value);
-                if (__FORMAT_JSON__) {
-                    str = formatEmbeddedJson(str);
-                }
+                if (__FORMAT_JSON__) str = formatEmbeddedJson(str);
                 return escapeHtml(str);
             }
 
             function renderTable() {
-                var fields = __DATA__.fields;
-                var rows = __DATA__.rows;
-                var batchSize = __BATCH_SIZE__;
+                var fields = __DATA__.fields, rows = __DATA__.rows, batchSize = __BATCH_SIZE__;
 
-                // Render header
                 var thead = document.getElementById('tableHead');
                 var headerRow = document.createElement('tr');
                 fields.forEach(function(field) {
@@ -295,57 +296,36 @@ export class JSONTable {
                 });
                 thead.appendChild(headerRow);
 
-                // Batch render body
                 var tbody = document.getElementById('tableBody');
-                var totalRows = rows.length;
-                var currentRow = 0;
+                var totalRows = rows.length, currentRow = 0;
 
                 function renderBatch() {
                     var fragment = document.createDocumentFragment();
                     var end = Math.min(currentRow + batchSize, totalRows);
-
                     for (var i = currentRow; i < end; i++) {
-                        var content = rows[i];
                         var tr = document.createElement('tr');
                         fields.forEach(function(key) {
                             var td = document.createElement('td');
-                            td.innerHTML = formatCellValue(content[key]);
+                            td.innerHTML = formatCellValue(rows[i][key]);
                             tr.appendChild(td);
                         });
                         fragment.appendChild(tr);
                     }
-
                     tbody.appendChild(fragment);
                     currentRow = end;
-
-                    if (currentRow < totalRows) {
-                        setTimeout(renderBatch, 0);
-                    } else {
-                        // 所有行渲染完成后，自动滚动到底部
-                        window.scrollTo(0, document.body.scrollHeight);
-                    }
+                    if (currentRow < totalRows) { setTimeout(renderBatch, 0); }
+                    else { window.scrollTo(0, document.body.scrollHeight); }
                 }
-
                 renderBatch();
 
-                // Setup resizers
-                var resizers = document.querySelectorAll('.resizer');
-                resizers.forEach(function(resizer) {
+                // Resizers
+                document.querySelectorAll('.resizer').forEach(function(resizer) {
                     resizer.addEventListener('mousedown', function(e) {
-                        var startX = e.pageX;
-                        var startWidth = resizer.parentElement.offsetWidth;
-                        var isDragging = true;
-                        function onMouseMove(e) {
-                            if (!isDragging) return;
-                            resizer.parentElement.style.width = (startWidth + (e.pageX - startX)) + 'px';
-                        }
-                        function onMouseUp() {
-                            isDragging = false;
-                            document.removeEventListener('mousemove', onMouseMove);
-                            document.removeEventListener('mouseup', onMouseUp);
-                        }
-                        document.addEventListener('mousemove', onMouseMove);
-                        document.addEventListener('mouseup', onMouseUp);
+                        var startX = e.pageX, startW = resizer.parentElement.offsetWidth, dragging = true;
+                        function move(e) { if (!dragging) return; resizer.parentElement.style.width = (startW + (e.pageX - startX)) + 'px'; }
+                        function up() { dragging = false; document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); }
+                        document.addEventListener('mousemove', move);
+                        document.addEventListener('mouseup', up);
                     });
                 });
 
@@ -354,28 +334,21 @@ export class JSONTable {
                 var tableHead = document.getElementById('tableHead');
                 var contextMenu = document.getElementById('contextMenu');
                 var currentColumnIndex = null;
-
-                tableHead.addEventListener('contextmenu', function(event) {
-                    event.preventDefault();
-                    var th = event.target.closest('th');
+                tableHead.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    var th = e.target.closest('th');
                     if (th) {
                         currentColumnIndex = [...th.parentElement.children].indexOf(th);
-                        contextMenu.style.left = event.pageX + 'px';
-                        contextMenu.style.top = event.pageY + 'px';
+                        contextMenu.style.left = e.pageX + 'px';
+                        contextMenu.style.top = e.pageY + 'px';
                         contextMenu.style.display = 'block';
                     }
                 });
-
-                document.addEventListener('click', function() {
-                    contextMenu.style.display = 'none';
-                });
-
+                document.addEventListener('click', function() { contextMenu.style.display = 'none'; });
                 document.getElementById('hideColumn').addEventListener('click', function() {
                     if (currentColumnIndex !== null) {
                         table.querySelectorAll('thead th')[currentColumnIndex].style.display = 'none';
-                        table.querySelectorAll('tbody tr').forEach(function(row) {
-                            row.children[currentColumnIndex].style.display = 'none';
-                        });
+                        table.querySelectorAll('tbody tr').forEach(function(row) { row.children[currentColumnIndex].style.display = 'none'; });
                     }
                     contextMenu.style.display = 'none';
                 });
@@ -383,6 +356,28 @@ export class JSONTable {
 
             renderTable();
             initSearch();
+
+            window.addEventListener('message', function(event) {
+                var msg = event.data;
+                if (msg && msg.command === 'appendRows') appendNewRows(msg.rows);
+            });
+
+            function appendNewRows(newRows) {
+                if (!newRows || newRows.length === 0) return;
+                var tbody = document.getElementById('tableBody');
+                var fragment = document.createDocumentFragment();
+                newRows.forEach(function(content) {
+                    var tr = document.createElement('tr');
+                    __DATA__.fields.forEach(function(key) {
+                        var td = document.createElement('td');
+                        td.innerHTML = formatCellValue(content[key]);
+                        tr.appendChild(td);
+                    });
+                    fragment.appendChild(tr);
+                });
+                tbody.appendChild(fragment);
+                window.scrollTo(0, document.body.scrollHeight);
+            }
         </script>
         `;
     }

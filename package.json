@@ -3,7 +3,7 @@
 	"displayName": "JSON Log Viewer",
 	"description": "View JSON as Table",
 	"publisher": "tanggod",
-	"version": "1.0.4",
+	"version": "1.0.5",
 	"engines": {
 		"vscode": "^1.53.0"
 	},
@@ -89,7 +89,7 @@
 	"icon": "icon.png",
 	"bugs": {
 		"url": "https://github.com/godtang/vscode-json-log-viewer/issues",
-		"email": ""
+		"email": "fake@fake.com"
 	},
 	"repository": {
 		"type": "git",
