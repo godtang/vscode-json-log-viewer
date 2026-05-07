@@ -320,6 +320,9 @@ export class JSONTable {
 
                     if (currentRow < totalRows) {
                         setTimeout(renderBatch, 0);
+                    } else {
+                        // 所有行渲染完成后，自动滚动到底部
+                        window.scrollTo(0, document.body.scrollHeight);
                     }
                 }
 
