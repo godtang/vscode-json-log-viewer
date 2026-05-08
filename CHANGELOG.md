@@ -1,5 +1,10 @@
 # Change Log
 
+## 1.0.6
+
+- Add `auto-scroll-on-open` configuration for initial render scroll behavior
+- Only auto-scroll to bottom on tail refresh if already at bottom, otherwise stay at current position
+
 ## 1.0.5
 
 - Optimize tail mode: only append new lines via `postMessage`, no full page re-render

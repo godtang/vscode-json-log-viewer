@@ -148,6 +148,7 @@ export class JSONTable {
                     var __DATA__ = ${JSON.stringify({ fields: this.fields, rows: this.contentList })};
                     var __BATCH_SIZE__ = ${this.batchSize};
                     var __FORMAT_JSON__ = ${vscode.workspace.getConfiguration("json-table-viewer").get<boolean>("format-embedded-json", true)};
+                    var __AUTO_SCROLL_ON_OPEN__ = ${vscode.workspace.getConfiguration("json-table-viewer").get<boolean>("auto-scroll-on-open", true)};
                 </script>
                 ${this.getScript()}
             </body>
@@ -314,8 +315,9 @@ export class JSONTable {
                     tbody.appendChild(fragment);
                     currentRow = end;
                     if (currentRow < totalRows) { setTimeout(renderBatch, 0); }
-                    else { window.scrollTo(0, document.body.scrollHeight); }
+                    else { if (__AUTO_SCROLL_ON_OPEN__) window.scrollTo(0, document.body.scrollHeight); }
                 }
+
                 renderBatch();
 
                 // Resizers
@@ -357,6 +359,10 @@ export class JSONTable {
             renderTable();
             initSearch();
 
+            function isAtBottom() {
+                return (window.innerHeight + window.pageYOffset) >= (document.body.scrollHeight - 50);
+            }
+
             window.addEventListener('message', function(event) {
                 var msg = event.data;
                 if (msg && msg.command === 'appendRows') appendNewRows(msg.rows);
@@ -364,6 +370,7 @@ export class JSONTable {
 
             function appendNewRows(newRows) {
                 if (!newRows || newRows.length === 0) return;
+                var shouldScroll = isAtBottom();
                 var tbody = document.getElementById('tableBody');
                 var fragment = document.createDocumentFragment();
                 newRows.forEach(function(content) {
@@ -376,7 +383,7 @@ export class JSONTable {
                     fragment.appendChild(tr);
                 });
                 tbody.appendChild(fragment);
-                window.scrollTo(0, document.body.scrollHeight);
+                if (shouldScroll) window.scrollTo(0, document.body.scrollHeight);
             }
         </script>
         `;

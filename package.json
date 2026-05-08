@@ -3,7 +3,7 @@
 	"displayName": "JSON Log Viewer",
 	"description": "View JSON as Table",
 	"publisher": "tanggod",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"engines": {
 		"vscode": "^1.53.0"
 	},
@@ -57,6 +57,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "是否在字符串值中查找并格式化嵌入的JSON"
+				},
+				"json-table-viewer.auto-scroll-on-open": {
+					"type": "boolean",
+					"default": true,
+					"description": "首次打开时是否自动滚动到底部"
 				}
 			}
 		}
